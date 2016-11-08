@@ -31,10 +31,7 @@ public class MySQLStorageTest {
     DataSource dataSource = mock(DataSource.class);
     when(dataSource.getConnection()).thenThrow(new SQLException("foo"));
 
-    CheckResult result = MySQLStorage.builder()
-        .executor(Runnable::run)
-        .datasource(dataSource)
-        .build().check();
+    CheckResult result = storage(dataSource).check();
 
     assertThat(result.ok).isFalse();
     assertThat(result.exception)
@@ -52,10 +49,7 @@ public class MySQLStorageTest {
     when(dataSource.getConnection()).thenThrow(
         new DataAccessException(sqlException.getMessage(), sqlException));
 
-    Boolean result = MySQLStorage.builder()
-        .executor(Runnable::run)
-        .datasource(dataSource)
-        .build().hasIpv6.get();
+    Boolean result = storage(dataSource).schema.get().hasIpv6();
 
     assertThat(result).isFalse();
   }
@@ -76,10 +70,7 @@ public class MySQLStorageTest {
     when(dataSource.getConnection()).thenThrow(
         new DataAccessException(sqlException.getMessage(), sqlException));
 
-    Boolean result = MySQLStorage.builder()
-        .executor(Runnable::run)
-        .datasource(dataSource)
-        .build().hasIpv6.get();
+    Boolean result = storage(dataSource).schema.get().hasIpv6();
 
     assertThat(result).isFalse();
   }
@@ -96,11 +87,16 @@ public class MySQLStorageTest {
     when(dataSource.getConnection()).thenThrow(
         new DataAccessException(sqlException.getMessage(), sqlException));
 
-    Boolean result = MySQLStorage.builder()
-        .executor(Runnable::run)
-        .datasource(dataSource)
-        .build().hasPreAggregatedDependencies.get();
+    Boolean result = storage(dataSource).schema.get().hasPreAggregatedDependencies();
 
     assertThat(result).isFalse();
+  }
+
+  static MySQLStorage storage(DataSource dataSource) {
+    return MySQLStorage.builder()
+        .strictTraceId(false)
+        .executor(Runnable::run)
+        .datasource(dataSource)
+        .build();
   }
 }

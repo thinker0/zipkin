@@ -38,11 +38,18 @@ public final class MySQLStorage implements StorageComponent {
     return new Builder();
   }
 
-  public final static class Builder {
+  public final static class Builder implements StorageComponent.Builder {
+    boolean strictTraceId = true;
     private DataSource datasource;
     private Settings settings = new Settings().withRenderSchema(false);
     private ExecuteListenerProvider listenerProvider;
     private Executor executor;
+
+    /** {@inheritDoc} */
+    @Override public Builder strictTraceId(boolean strictTraceId) {
+      this.strictTraceId = strictTraceId;
+      return this;
+    }
 
     public Builder datasource(DataSource datasource) {
       this.datasource = checkNotNull(datasource, "datasource");
@@ -64,7 +71,7 @@ public final class MySQLStorage implements StorageComponent {
       return this;
     }
 
-    public MySQLStorage build() {
+    @Override public MySQLStorage build() {
       return new MySQLStorage(this);
     }
 
@@ -79,10 +86,8 @@ public final class MySQLStorage implements StorageComponent {
   private final DataSource datasource;
   private final Executor executor;
   private final DSLContexts context;
-  final Lazy<Boolean> hasIpv6;
-  final Lazy<Boolean> hasTraceIdHigh;
-  final Lazy<Boolean> hasPreAggregatedDependencies;
-  private final SpanStore spanStore;
+  final Lazy<Schema> schema;
+  private final MySQLSpanStore spanStore;
   private final AsyncSpanStore asyncSpanStore;
   private final AsyncSpanConsumer asyncSpanConsumer;
 
@@ -90,14 +95,10 @@ public final class MySQLStorage implements StorageComponent {
     this.datasource = checkNotNull(builder.datasource, "datasource");
     this.executor = checkNotNull(builder.executor, "executor");
     this.context = new DSLContexts(builder.settings, builder.listenerProvider);
-    this.hasIpv6 = new HasIpv6(datasource, context);
-    this.hasTraceIdHigh = new HasTraceIdHigh(datasource, context);
-    this.hasPreAggregatedDependencies = new HasPreAggregatedDependencies(datasource, context);
-    this.spanStore = new MySQLSpanStore(datasource, context, hasTraceIdHigh, hasIpv6,
-        hasPreAggregatedDependencies);
+    this.schema = Schema.parse(datasource, context);
+    this.spanStore = new MySQLSpanStore(datasource, context, schema, builder.strictTraceId);
     this.asyncSpanStore = blockingToAsync(spanStore, executor);
-    MySQLSpanConsumer spanConsumer =
-        new MySQLSpanConsumer(datasource, context, hasTraceIdHigh, hasIpv6);
+    MySQLSpanConsumer spanConsumer = new MySQLSpanConsumer(datasource, context, schema);
     this.asyncSpanConsumer = blockingToAsync(spanConsumer, executor);
   }
 

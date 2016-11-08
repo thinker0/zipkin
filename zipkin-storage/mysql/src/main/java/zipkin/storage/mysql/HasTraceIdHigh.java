@@ -25,7 +25,17 @@ import zipkin.internal.Lazy;
 import static zipkin.storage.mysql.internal.generated.tables.ZipkinSpans.ZIPKIN_SPANS;
 
 final class HasTraceIdHigh extends Lazy<Boolean> {
-  private static final Logger LOG = Logger.getLogger(HasTraceIdHigh.class.getName());
+  static final Logger LOG = Logger.getLogger(HasTraceIdHigh.class.getName());
+  static final String MESSAGE =
+      "zipkin_spans.trace_id_high doesn't exist, so 128-bit trace ids are not supported. " +
+          "Execute: ALTER TABLE zipkin_spans ADD `trace_id_high` BIGINT NOT NULL DEFAULT 0;\n"
+          + "ALTER TABLE zipkin_annotations ADD `trace_id_high` BIGINT NOT NULL DEFAULT 0;\n"
+          + "ALTER TABLE zipkin_spans"
+          + "   DROP INDEX trace_id,\n"
+          + "   ADD UNIQUE KEY(`trace_id_high`, `trace_id`, `id`);\n"
+          + "ALTER TABLE zipkin_annotations\n"
+          + "   DROP INDEX trace_id,\n"
+          + "   ADD UNIQUE KEY(`trace_id_high`, `trace_id`, `span_id`, `a_key`, `a_timestamp`);";
 
   final DataSource datasource;
   final DSLContexts context;
@@ -42,16 +52,7 @@ final class HasTraceIdHigh extends Lazy<Boolean> {
       return true;
     } catch (DataAccessException e) {
       if (e.sqlState().equals("42S22")) {
-        LOG.warning(
-            "zipkin_spans.trace_id_high doesn't exist, so 128-bit trace ids are not supported. " +
-                "Execute: ALTER TABLE zipkin_spans ADD `trace_id_high` BIGINT NOT NULL DEFAULT 0;\n"
-                + "ALTER TABLE zipkin_annotations ADD `trace_id_high` BIGINT NOT NULL DEFAULT 0;\n"
-                + "ALTER TABLE zipkin_spans"
-                + "   DROP INDEX trace_id,\n"
-                + "   ADD UNIQUE KEY(`trace_id_high`, `trace_id`, `id`);\n"
-                + "ALTER TABLE zipkin_annotations\n"
-                + "   DROP INDEX trace_id,\n"
-                + "   ADD UNIQUE KEY(`trace_id_high`, `trace_id`, `span_id`, `a_key`, `a_timestamp`);");
+        LOG.warning(MESSAGE);
         return false;
       }
       problemReading(e);
