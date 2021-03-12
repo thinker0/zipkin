@@ -30,7 +30,7 @@
   <properties>
     <main.basedir>${project.basedir}/..</main.basedir>
     <jmh.version>1.14</jmh.version>
-    <libthrift.version>0.9.3</libthrift.version>
+    <libthrift.version>0.14.0</libthrift.version>
   </properties>
 
   <dependencies>
